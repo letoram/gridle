@@ -56,7 +56,7 @@ local function launch(tbl)
 	if (tbl.capabilities == nil) then
 		return;
 	end
-	
+					
 	local launch_internal = (settings.default_launchmode == 
 		"Internal" or tbl.capabilities.external_launch == false) 
 		and tbl.capabilities.internal_launch;
@@ -76,7 +76,10 @@ local function launch(tbl)
 			INTERX = dstreg.pos[1];
 			INTERY = dstreg.pos[2];
 			INTERANG = dstreg.ang;
-			cleanup_trigger = function() end
+			customview.navigator:hide();
+			cleanup_trigger = function() 
+				customview.navigator:show();
+			end
 		end
 
 		order_image(imagery.loading, INGAMELAYER_OVERLAY);		
@@ -106,6 +109,11 @@ end
 
 local function navi_change(navi, navitbl)
 	settings.gametbl = navi:current_item();
+
+	if (settings.gametbl == nil) then
+		return;
+	end
+
 	settings.restbl  = resourcefinder_search(settings.gametbl, true);
 	send_gamedata(settings.gametbl, false);
 	
@@ -113,9 +121,9 @@ local function navi_change(navi, navitbl)
 	layout:show();
 
 -- we override some of the navigator settings
-	order_image( navi:drawable(), navitbl.zv    );
-	blend_image( navi:drawable(), navitbl.opa   );
-	 move_image( navi.clipregion, navitbl.pos[1], navitbl.pos[2] );
+--	order_image( navi:drawable(), navitbl.zv    );
+--	blend_image( navi:drawable(), navitbl.opa   );
+--  move_image( navi.clipregion, navitbl.pos[1], navitbl.pos[2] );
 end
 
 --
@@ -124,7 +132,11 @@ end
 --
 local function setup_customview()
 	local imenu = {};
-	
+
+	if (settings.sortfunctions[settings.sortorder]) then
+		table.sort(settings.games, settings.sortfunctions[settings.sortorder]);
+	end
+		
 	if (layout["navigator"]) then
 		local navitbl = layout["navigator"][1];
 		navitbl.width = navitbl.size[1];

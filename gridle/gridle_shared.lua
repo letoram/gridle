@@ -714,9 +714,13 @@ end
 -- confirm shutdown if the state can't be saved
 function gridle_internal_cleanup(finishedhook, forced)
 	if (settings.in_internal) then
+
 		if (settings.autosave == "On" or 
 			settings.autosave == "On (No Warning)") then
-
+			if (settings.autosave == "On (No Warning)") then
+				forced = true;
+			end
+				
 			if ((settings.capabilities.snapshot == false or 
 				settings.capabilities.snapshot == nil) and forced ~= true) then
 				local confirmcmd = {};

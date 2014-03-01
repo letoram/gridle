@@ -1750,12 +1750,13 @@ function gridview_cleanuphook()
 end
 
 function disable_snapshot()
+	settings.capabilities.snapshot = false;
+
 	if (gameflags.snapshot_warning == true) then
 		return;
 	end
 
 	gameflags.snapshot_warning = true;
-	settings.capabilities.snapshot = false;
 
 	if (imagery.nosave == nil) then
 		imagery.nosave = load_image("images/icons/brokensave.png");
