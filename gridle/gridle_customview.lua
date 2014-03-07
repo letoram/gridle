@@ -77,8 +77,16 @@ local function launch(tbl)
 			INTERY = dstreg.pos[2];
 			INTERANG = dstreg.ang;
 			customview.navigator:hide();
+
+			for k,v in pairs(layout.temporary_reuse) do
+				pause_movie(v);	
+			end
+
 			cleanup_trigger = function() 
 				customview.navigator:show();
+				for k,v in pairs(layout.temporary_reuse) do
+					resume_movie(v);	
+				end
 			end
 		end
 
@@ -119,11 +127,6 @@ local function navi_change(navi, navitbl)
 	
 	layout.default_gain = settings.movie_gain;
 	layout:show();
-
--- we override some of the navigator settings
---	order_image( navi:drawable(), navitbl.zv    );
---	blend_image( navi:drawable(), navitbl.opa   );
---  move_image( navi.clipregion, navitbl.pos[1], navitbl.pos[2] );
 end
 
 --
@@ -151,7 +154,7 @@ local function setup_customview()
 
 		customview.navigator = system_load("customview/" .. navitbl.res)();
 		local navi = customview.navigator;
-	
+
 		navi:create(navitbl);
 		navi:update_list(settings.games);
 		
