@@ -39,12 +39,23 @@ function string.split(instr, delim)
 	return res;
 end
 
+local subidtbl = {};
+for i=1,10 do
+	subidtbl[i] = false;	
+end
+
 -- (hidden) local dispatch function that gets 
 -- used when someone pushes a table but no name 
 local function dispatch_input(iotbl, override)
 	local restbl = keyconfig:match(iotbl);
-	
-	if (restbl and (iotbl.active or iotbl.kind == "analog")) then
+
+	if (restbl == nil) then
+		if (iotbl.kind == "digital" and iotbl.source == "mouse") then
+			subidtbl[iotbl.subid] = iotbl.active;
+			mouse_input(0, 0, subidtbl);
+		end
+
+	elseif (restbl and (iotbl.active or iotbl.kind == "analog")) then
 		for ind,val in pairs(restbl) do
 
 			if (settings.iodispatch[val]) then
@@ -63,7 +74,7 @@ end
 -- rrate is either -1 or 0,where 0 indicates no keyboard repeat allowed, 
 -- -1 sets it to user setting
 -- 
-function dispatch_push(tbl, nname, triggerfun, reprate)
+function dispatch_push(tbl, nname, triggerfun, reprate, nomousedef)
 	if (settings.dispatch_stack == nil) then
 		settings.dispatch_stack = {};
 	end
@@ -85,6 +96,18 @@ function dispatch_push(tbl, nname, triggerfun, reprate)
 	kbd_repeat(newtbl.rrate == -1 and 
 		settings.repeatrate or newtbl.rrate);
 
+	if (tbl["MOUSE_X"] == nil) then
+		tbl["MOUSE_X"] = function(luttbl, iotbl)
+			mouse_movement(iotbl.samples[2], 0); 
+		end 
+	end
+
+	if (tbl["MOUSE_Y"] == nil) then
+		tbl["MOUSE_Y"] = function(luttbl, iotbl)
+			mouse_movement(0, iotbl.samples[2], 0);
+		end
+	end
+	
 	if (DEBUGLEVEL > 0) then
 		print("dispatch_push(), adding ", tostring(tbl));
 	
@@ -566,12 +589,29 @@ function menu_spawnmenu(list, listptr, fmtlist)
 	local parent = current_menu;
 	local props = image_surface_resolve_properties(current_menu.cursorvid);
 
-	current_menu = listview_create(list, math.floor(VRESH * 0.7), 
-		math.floor(VRESW / 3), fmtlist);
+	current_menu = listview_create(
+		list, math.floor(VRESH * 0.7), math.floor(VRESW / 3), fmtlist);
+	mouse_addlistener(current_menu.mhandler, {"click", "rclick", "motion"});
+
+	current_menu.on_click = function(self, ind, rclick)
+		if (ind == nil) then
+			settings.iodispatch["MENU_ESCAPE"](nil, nil, false);
+		else
+			settings.iodispatch[
+				rclick and "FLAG_FAVORITE" or "MENU_SELECT"](nil, nil, true);
+		end
+	end
+
+	if (parent.mhandler) then
+		mouse_droplistener(parent.mhandler);
+	end
+
 	current_menu.parent = parent;
 	current_menu.ptrs = listptr;
 	current_menu.updatecb = parent.updatecb;
-	current_menu:show();
+	current_menu:show(MENULAYER);
+
+	parent.cascade_delete = current_menu;
 
 	move_image( current_menu.anchor, props.x + props.width + 3, props.y);
 
@@ -912,6 +952,7 @@ function menu_defaultdispatch(dst)
 					play_audio(soundmap["SUBMENU_FADE"]); 
 				end
 				current_menu = current_menu.parent;
+				mouse_addlistener(current_menu.mhandler, {"click", "rclick", "motion"});
 			else -- top level
 				play_audio(soundmap["MENU_FADE"]);
 				dispatch_pop();

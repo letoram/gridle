@@ -282,11 +282,13 @@ function gridlemenu_settings(cleanup_hook, filter_hook)
 	rebuild_grid = false;
 	
 	imenu["MENU_ESCAPE"] = function(iotbl, restbl, silent)
+		mouse_droplistener(current_menu.mhandler);
 		current_menu:destroy();
 
 		if (current_menu.parent ~= nil) then
 			if (silent == nil or silent == false) then play_audio(soundmap["SUBMENU_FADE"]); end
 			current_menu = current_menu.parent;
+			mouse_addlistener(current_menu.mhandler, {"click", "rclick", "motion"});
 		else -- top level
 			if (#settings.games == 0) then
 				settings.games = list_games( {} );
@@ -324,9 +326,17 @@ function gridlemenu_settings(cleanup_hook, filter_hook)
 	current_menu = listview_create(mainlbls, math.floor(VRESH * 0.9), 
 		math.floor(VRESW / 2));
 	current_menu.ptrs = mainptrs;
-	
-	current_menu:show();
+	current_menu.on_click = function(self, ind, rclick)
+		if (ind == nil) then
+			settings.iodispatch["MENU_ESCAPE"](nil, nil, false);
+		else
+			settings.iodispatch["MENU_SELECT"](nil, nil, false);
+		end
+	end
+
+	current_menu:show(MENULAYER);
 	dispatch_push(imenu);
+	mouse_addlistener(current_menu.mhandler, {"click", "motion"}); 
 	
 	local spawny = VRESH * 0.5 - 
 		image_surface_properties(current_menu.border, -1).height;

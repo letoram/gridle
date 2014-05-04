@@ -41,27 +41,63 @@ local function update_status()
 	table.insert(list, "---Currently Selected:");
 	table.insert(list, "Title: " .. string.gsub(tostring(current_game.title), 1, maxw));
 	table.insert(list, "System: " .. string.gsub(tostring(current_game.system), 1, maxw));
-	table.insert(list, "Target(ID): " .. tostring(current_game.target) .. "(" .. string.gsub(tostring(current_game.gameid), 1, maxw) .. ")");
+	table.insert(list, string.format("Target(ID): %s(%d)", 
+		current_game.target, current_game.gameid));
 	table.insert(list, "---Filtering:");
 	table.insert(list, "# Games: " .. tostring(#settings.games));
 	table.insert(list, "Sort Order: " .. settings.sortorder);
 	
 	filterstr = "Filters: ";
-	if (settings.filters.title)   then filterstr = filterstr .. " title("    .. settings.filters.title .. ")"; end
-	if (settings.filters.genre)   then filterstr = filterstr .. " genre("    .. settings.filters.genre .. ")"; end
-	if (settings.filters.subgenre)then filterstr = filterstr .. " subgenre(" .. settings.filters.subgenre .. ")"; end
-	if (settings.filters.target)  then filterstr = filterstr .. " target("   .. settings.filters.target .. ")"; end
-	if (settings.filters.year)    then filterstr = filterstr .. " year("     .. tostring(settings.filters.year) .. ")"; end
-	if (settings.filters.players) then filterstr = filterstr .. " players("  .. tostring(settings.filters.players) .. ")"; end
-	if (settings.filters.buttons) then filterstr = filterstr .. " buttons("  .. tostring(settings.filters.buttons) .. ")"; end
-	if (settings.filters.system)  then filterstr = filterstr .. " system(" .. tostring(settings.filters.system) .. ")"; end
-	if (settings.filters.manufacturer) then filterstr = filterstr .. " manufacturer(" .. tostring(settings.filters.manufacturer) .. ")"; end
+	if (settings.filters.title) then 
+		filterstr = string.format("%s title( %s )", 
+			filterstr, settings.filters.title);
+	end
+
+	if (settings.filters.genre) then 
+		filterstr = string.format("%s genre( %s )", 
+			filterstr, settings.filters.genre); 
+	end
+
+	if (settings.filters.genre) then 
+		filterstr = string.format("%s subgenre( %s )", 
+			flterstr, settings.filters.subgenre); 
+	end
+
+	if (settings.filters.target) then 
+		filterstr = string.format("%s target( %s )", 
+			filterstr, settings.filters.target); 
+	end
+
+	if (settings.filters.year) then 
+		filterstr = string.format("%s year( %d )", 
+			filterstr, settings.filters.year); 
+	end
+
+	if (settings.filters.players) then 
+		filterstr = string.format("%s players( %d )", 
+			filterstr, settings.filters.players); 
+	end
+
+	if (settings.filters.players) then 
+		filterstr = string.format("%s players( %d )", 
+			filterstr, settings.filters.players); 
+	end
+
+	if (settings.filters.system) then 
+		filterstr = string.format("%s system( %s )", 
+		filterstr, settings.filters.system);
+	end
+
+	if (settings.filters.manufacturer) then 
+		filterstr = string.format("%s manufacturer( %s )",
+			filterstr, settings.filters.manufacturer);
+	end
 
 	table.insert(list, filterstr);
 
 	if (settings.statuslist == nil) then
-		settings.statuslist = listview_create(list, VRESH * 0.9, VRESW * 0.75);
-		settings.statuslist:show();
+		settings.statuslist = listview_create(list, VRESH * 0.9, VRESW * 0.75, {}, true);
+		settings.statuslist:show(MENULAYER);
 		move_image(settings.statuslist.anchor, 5, settings.fadedelay);
 		hide_image(settings.statuslist.cursorvid);
 	else
@@ -215,11 +251,14 @@ local function update_filterlist()
 	for i=1,#filterlbls do
 		local filterlbl = filterlbls[i];
 		if (settings.filters[ filterlbls[i] ]) then
-			filterlbls[i] = filterlbls[i] .. [[\i (]] .. settings.filters[ filterlbls[i] ] .. [[)\!i]];
+			filterlbls[i] = filterlbls[i] .. [[\i (]] .. 
+				settings.filters[ filterlbls[i] ] .. [[)\!i]];
 		end
 
 		table.insert(filterres, filterlbl);
-		filterresptr[filterlbl] = function(lbl) menu_spawnmenu( get_unique(settings.games, string.lower(lbl)) ); end
+		filterresptr[filterlbl] = function(lbl) 
+			menu_spawnmenu( get_unique(settings.games, string.lower(lbl)) ); 
+		end
 	end
 
 	return filterres, filterresptr;
@@ -241,9 +280,11 @@ function gridlemenu_setzoom( source, reference )
 	end
 	
 	resize_image(source, endw, endh, 20);
-	move_image(source, desw + 0.5 * (desw - endw), 0.5 * (VRESH - endh), settings.transitiondelay);
+	move_image(source, desw + 0.5 * (desw - endw), 
+		0.5 * (VRESH - endh), settings.transitiondelay, INTERP_SINE);
+	
 	blend_image(source, 1.0, settings.transitiondelay);
-	order_image(source, max_current_image_order());
+	order_image(source, MENULAYER); 
 end
 
 -- change launch mode for this particular game
@@ -282,6 +323,7 @@ function gridlemenu_context( cleanup_trigger, display_image )
 	end
 
 	itbl["MENU_ESCAPE"] = function(key, store, silent)
+		mouse_droplistener(current_menu.mhandler);
 		current_menu:destroy();
 
 		if (current_menu.background) then
@@ -318,6 +360,7 @@ function gridlemenu_context( cleanup_trigger, display_image )
 	
 		else
 			current_menu = current_menu.parent;
+			mouse_addlistener(current_menu.mhandler, {"click", "rclick", "motion"});
 			if (silent == nil or silent == false) then
 				play_audio(soundmap["SUBMENU_FADE"]);
 			end
@@ -326,7 +369,8 @@ function gridlemenu_context( cleanup_trigger, display_image )
 	end
 
 	if (current_game.capabilities) then
-		if (current_game.capabilities.external_launch and current_game.capabilities.internal_launch) then
+		if (current_game.capabilities.external_launch and 
+			current_game.capabilities.internal_launch) then
 			table.insert(mainlbls, "Launch...");
 			ptrs[ "Launch..." ] = function() menu_spawnmenu(launchlbls, launchptrs, {}); end
 
@@ -356,9 +400,18 @@ function gridlemenu_context( cleanup_trigger, display_image )
 	current_menu.ptrs = ptrs;
 	current_menu.parent = nil;
 
-	current_menu.background = fill_surface(VRESW, VRESH, 0, 0, 0);
+	current_menu.on_click = function(self, vid, right)
+		if (ind == nil) then
+			settings.iodispatch["MENU_SELECT"](nil, nil, true);
+		else
+			settings.iodispatch[
+				rclick and "FLAG_FAVORITE" or "MENU_SELECT"](nil, nil, true);
+		end
+	end
+
+	current_menu.background = color_surface(VRESW, VRESH, 0, 0, 0);
 	blend_image(current_menu.background, 0.8, settings.transitiondelay);
-	order_image(current_menu.background, max_current_image_order() + 1);
+	order_image(current_menu.background, MENULAYER - 1); 
 
 	if (display_image) then
 		imagery.zoomed = display_image;
@@ -378,9 +431,19 @@ function gridlemenu_context( cleanup_trigger, display_image )
 	update_status();
 	local props = image_surface_properties(settings.statuslist.border, 5);
 
+	current_menu.on_click = function(self, ind, rclick)
+		if (ind == nil) then
+			settings.iodispatch["MENU_ESCAPE"](nil, nil, false);
+		else
+			settings.iodispatch["MENU_SELECT"](nil, nil, false);
+		end
+	end
+	mouse_addlistener(current_menu.mhandler, {"click", "motion"}); 
 	menu_defaultdispatch(itbl);
 	dispatch_push(itbl, "context_menu");
-	current_menu:show();
+	current_menu:show(MENULAYER);
 
-	move_image(current_menu.anchor, 5, math.floor(props.y + props.height + (VRESH - props.height) * 0.09), settings.fadedelay);
+	move_image(current_menu.anchor, 5, 
+		math.floor(props.y + props.height + (VRESH - props.height) * 0.09), 
+		settings.fadedelay);
 end

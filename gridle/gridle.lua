@@ -65,6 +65,8 @@ soundmap_triggers = {
  GRIDLAYER_MOVIE = 4;
  GRIDLAYER_ZOOM  = 5;
  ICONLAYER = 7;
+ MENULAYER = 15;
+ CURSORLAYER = 20;
 
  INGAMELAYER_BACKGROUND = 8;
  INGAMELAYER_DISPLAY = 9;
@@ -77,8 +79,12 @@ settings = {
 	effect_gain   = 1.0,
 	movie_gain    = 1.0,
 
-	mouse_enabled = true,
-	mouse_trails  = 0,
+	mouse_cursor   = "images/icons/mouse_cursor.png",
+	mouse_cursor_w = 64,
+	mouse_cursor_h = 64,
+	mouse_ofs_x    = -32,
+	mouse_ofs_y    = 0,
+	mouse_trails   = 0,
 
 	soundmap      = "8bit",
 	bgmusic       = "Disabled",
@@ -407,6 +413,7 @@ function gridle()
 -- some load-time options in gridle_menus etc.
 	system_load("gridle_shared.lua")(); 
 	load_settings();
+	mouse_disable();
 	
 -- grab all dependencies;
 -- default colour values for windows, text etc.
@@ -536,44 +543,34 @@ function gridview_input()
 -- the dispatchtable will be manipulated throughout the theme, 
 -- simply used as a label <-> function pointer lookup table
 -- check gridle_input / gridle_dispatchinput for more detail
-	imenu["MOUSE_X"] = 
-	function(luttbl, iotbl)
-		mouse_movement(iotbl.samples[1], 0); 
-	end 
-	
-	imenu["MOUSE_Y"] = 
-	function(luttbl, iotbl) 
-		mouse_movement(0, iotbl.samples[1]); 
-	end
-
 	imenu["MENU_UP"] = 
 	function(iotbl) 
 		play_audio(soundmap["GRIDCURSOR_MOVE"]);
-		move_cursor( -1 *settings.ncw); 
+		move_cursor( -1 *settings.ncw, false, true); 
 	end
 
 	imenu["MENU_DOWN"] = 
 	function(iotbl) 
 		play_audio(soundmap["GRIDCURSOR_MOVE"]); 
-		move_cursor(settings.ncw ); 
+		move_cursor(settings.ncw, false, true); 
 	end
 
 	imenu["MENU_LEFT"] = 
 	function(iotbl) 
 		play_audio(soundmap["GRIDCURSOR_MOVE"]); 
-		move_cursor( -1 ); 
+		move_cursor( -1, false, true); 
 	end
 
 	imenu["MENU_RIGHT"] = 
 	function(iotbl)
 		play_audio(soundmap["GRIDCURSOR_MOVE"]); 
-		move_cursor( 1 ); 
+		move_cursor( 1, false, true); 
 	end
 
 	imenu["RANDOM_GAME"] = 
 	function(iotbl) 
 		play_audio(soundmap["GRIDCURSOR_MOVE"]); 
-		move_cursor( math.random(-#settings.games, #settings.games) ); 
+		move_cursor( math.random(-#settings.games, #settings.games), false, true); 
 	end
 
 	imenu["MENU_ESCAPE"] =
@@ -648,7 +645,10 @@ function gridview_input()
 	
 	imenu["MENU_TOGGLE"]  = function(iotbl)
 		play_audio(soundmap["MENU_TOGGLE"]);
+		mouse_droplistener(gridle_mouseh);
+
 		gridlemenu_settings( function(upd)
+			mouse_addlistener(gridle_mouseh, {"motion", "click", "rclick"});
 			if (not upd) then return; end
 			erase_grid(false);
 			menu_bgupdate();
@@ -659,13 +659,16 @@ function gridview_input()
 	
 	imenu["CONTEXT"] = function(iotbl)
 		play_audio(soundmap["MENU_TOGGLE"]);
+		mouse_droplistener(gridle_mouseh);
+
 		gridlemenu_context( function(upd)
+			mouse_addlistener(gridle_mouseh, {"motion", "click", "rclick"});
 			if (not upd) then return; end
 			settings.cursor = 0;
 			settings.pageofs = 0;
 			erase_grid(false);
 			build_grid(settings.cell_width, settings.cell_height);
-			move_cursor(1, true);
+			move_cursor(1, true, true);
 		end, cursor_vid() );
 	end
 	
@@ -689,11 +692,67 @@ function gridview_input()
 	settings.grid_dispatch = imenu;
 end
 
+function mouse_disable()
+	mouse_input = function() end
+	mouse_addlistener = function() end
+	mouse_droplistener = function() end
+	mouse_tick = function() end
+-- just stub all mouse related inputs
+	toggle_mouse_grab(MOUSE_GRABOFF);
+	mouse_droplistener(grid_mouseh);
+end
+
+function mouse_init()
+	system_load("scripts/mouse.lua")();
+	local cursor = load_image(settings.mouse_cursor, 0, 
+		settings.mouse_cursor_w, settings.mouse_cursor_h);
+	show_image(cursor);
+
+	image_mask_set(cursor, MASK_UNPICKABLE);
+	local cursor_hot = null_surface(64, 64, 255, 0, 0);
+	link_image(cursor, cursor_hot);
+
+	image_inherit_order(cursor, true);
+	move_image(cursor, settings.mouse_ofs_x, settings.mouse_ofs_y); 
+
+	mouse_state().autohide = true;
+	mouse_setup(cursor_hot, CURSORLAYER, 1, false, true);
+	toggle_mouse_grab(MOUSE_GRABON);
+
+	gridle_mouseh = {
+		motion = function(self, dx, dy)
+			local current = cursor_vid();
+
+			local mx, my = mouse_xy();
+			local props = image_surface_resolve_properties(current);
+			if (mx < props.x) then
+				move_cursor(-1, false);
+			elseif (mx > props.x + props.width) then
+				move_cursor(1, false);
+			end
+			if (my < props.y) then
+				move_cursor( -1 * settings.ncw, false); 
+			elseif (my > props.y + props.height) then
+				move_cursor(settings.ncw, false);
+			end
+			mouse_lastvid = cursor_vid();
+		end,
+		click = function(self, vid)
+			settings.iodispatch["MENU_SELECT"](nil, nil, true);
+		end,
+		rclick = function(self, vid)
+			settings.iodispatch["CONTEXT"](nil, nil, true);
+		end,
+		own = function(self, vid)
+			return vid == grid_mouseh; 
+		end
+	};
+
+	mouse_addlistener(gridle_mouseh, {"motion", "click", "rclick"});
+end
+
 function mouse_movement(dx, dy)
-	if (settings.mouse_enabled) then
-		mouse_x = mouse_x + dx;
-		mouse_y = mouse_y + dy;
-		move_image(imagery.mouse_cursor, mouse_x, mouse_y);
+	mouse_input(dx, dy, {false, false, false, false, false});
 
 -- [1] check the current dispatch handler and figure out if we're in
 --     the shared menus, the grid view or the OSD keyboard
@@ -703,13 +762,18 @@ function mouse_movement(dx, dy)
 --
 -- [2b]for menus or OSD, just forward the event to the 
 -- corresponding listview/osdkbd
-	end
 end
 
 -- to save resources when going from customview to grid view
 -- the entire context is poped meaning that all involved 
 -- resources need to be rebuilt
 function setup_gridview()
+	mouse_init();
+	grid_mouseh = null_surface(1, 1);
+	image_tracetag(grid_mouseh, "grid mouse capture");
+	show_image(grid_mouseh);
+	order_image(grid_mouseh, MENULAYER - 1);
+
 	gridview_input();
 	setup_3dsupport();
 
@@ -1051,7 +1115,7 @@ end
 -- the labels are a subset of the output from keyconf (PLAYERn)
 function gridle_ledconf(defer_fun)
 	if (keyconfig.active == false) then 
-		return; 
+		return;
 	end -- defer ledconf
 
 	local ledconflabels = {};
@@ -1345,7 +1409,7 @@ function blend_gridcell(val, dt)
 	end
 end
 
-function move_cursor( ofs, absolute )
+function move_cursor( ofs, absolute, upd_mouse )
 	local pageofs_cur = settings.pageofs;
 	blend_gridcell(0.3, settings.fadedelay);
 
@@ -1399,6 +1463,14 @@ function move_cursor( ofs, absolute )
 -- reset the cooldown that triggers movie playback
 	settings.cooldown = settings.cooldown_start;
 	blend_gridcell(1.0, settings.fadedelay);
+
+-- jump the mouse cursor without triggering additional events
+	if (upd_mouse) then
+		local props = image_surface_resolve_properties(cursor_vid());
+		move_image(mouse_state().cursor, props.x, props.y); 
+		mouse_state().x = props.x;
+		mouse_state().y = props.y;
+	end
 end
 
 -- resourcetbl is quite large, check resourcefinder.lua for more info
@@ -1569,6 +1641,13 @@ end
 function build_grid(width, height)
 --  figure out how many full cells we can fit with the current resolution
 	if (settings.grid_alive) then return; end
+
+	local cx, cy = cell_coords(0, 0);
+	move_image(grid_mouseh, cx, cy);
+
+	local cw, ch = cell_coords(settings.ncw, settings.nch);
+	resize_image(grid_mouseh, cw - cx, ch - cy);
+
 	settings.grid_alive = true;
 	zap_whitegrid();
 
@@ -1708,6 +1787,8 @@ function gridle_clock_pulse()
 		settings.shutdown_timer = settings.shutdown_timer - 1;
 		if (settings.shutdown_timer == 0) then shutdown(); end
 	end
+
+	mouse_tick(1);
 end
 
 function gridview_cleanuphook()
