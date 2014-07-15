@@ -28,7 +28,7 @@ function gridle_remote()
 
 	load_keys();
 
--- will either spawn the setup layout first or, if there already is one, spawn menu 
+-- will either spawn the setup layout first or, if there already is one, spawn menu
 -- (which may or may not just autoconnect depending on settings)
 	default_dispatch = {};
 
@@ -36,7 +36,7 @@ function gridle_remote()
 		reset_connection();
 		spawn_mainmenu();
 	end
-	
+
 	default_dispatch["MENU_ESCAPE"] = function()
 		shutdown();
 	end
@@ -53,18 +53,18 @@ end
 
 function open_connection()
 	if (current_menu) then
-		while (current_menu ~= nil) do 
+		while (current_menu ~= nil) do
 			current_menu:destroy();
 			current_menu = current_menu.parent;
 		end
 		dispatch_pop();
 	end
-	
+
 	if (settings.infowin) then
 		settings.infowin:destroy();
 		settings.infowin = nil;
 	end
-	
+
 	if (valid_vid(settings.connection)) then
 		delete_image(settings.connection);
 	end
@@ -77,7 +77,7 @@ function open_connection()
 		settings.warningwin = spawn_warning("Trying to connect to: " .. settings.connect_host, 1);
 		dst = settings.connect_host;
 	end
-	
+
 	settings.connection = net_open(dst, net_event);
 end
 
@@ -89,16 +89,16 @@ function draw_infowin()
 	if (settings.menu_layout and not resource("layouts/" .. settings.menu_layout)) then
 		settings.menu_layout = nil;
 	end
-	
+
 	if (settings.ingame_layout and not resource("layouts/" .. settings.ingame_layout)) then
 		settings.ingame_layout = nil;
 	end
-	
+
 	local status = {};
 	local undefline = "\\#ff0000Undefined\\#ffffff";
-	
+
 	table.insert(status, "Menu Layout:\\t ( " .. (settings.menu_layout ~= nil and settings.menu_layout or undefline) .. " )");
-	table.insert(status, "Ingame Layout:\\t ( " .. (settings.ingame_layout ~= nil and settings.ingame_layout or undefline) .. " )");	
+	table.insert(status, "Ingame Layout:\\t ( " .. (settings.ingame_layout ~= nil and settings.ingame_layout or undefline) .. " )");
 	table.insert(status, "Connection Method:\\t ( " .. (settings.connect_host ~= nil and settings.connect_host or undefline) .. " )");
 
 	settings.infowin = listview_create( status, VRESW * 0.5, VRESH * 0.5, {} );
@@ -118,7 +118,7 @@ function set_layout(layname, target, save)
 		settings.ingame_layout = layname;
 		store_key("ingame_layout", layname);
 	end
-	
+
 	draw_infowin();
 	settings.iodispatch["MENU_ESCAPE"]();
 end
@@ -130,12 +130,12 @@ function spawn_mainmenu()
 	end
 
 	draw_infowin();
-	
+
 -- Default Global Menus (and their triggers)
 	local mainlbls     = {};
-	local settingslbls = {"Reset Keyconfig"}; 
+	local settingslbls = {"Reset Keyconfig"};
 	local connectlbls  = {"Local Discovery", "Specify Server"};
-	
+
 	local connectptrs  = {};
 	local mainptrs     = {};
 	local settingsptrs = {};
@@ -146,14 +146,14 @@ function spawn_mainmenu()
 
 	layptrs["New Layout"] = define_layout;
 	layfmts["New Layout"] = "\\b" .. settings.colourtable.notice_fontstr;
-	
+
 	add_submenu(mainlbls, mainptrs, "Layouts...", "_nokey", laylbls, layptrs, layfmts);
 	add_submenu(mainlbls, mainptrs, "Connection Method...", "_nokey", connectlbls, connectptrs);
 	add_submenu(mainlbls, mainptrs, "Settings...", "_nokey", settingslbls, settingsptrs, settingsfmts);
-	
+
 	local globlbl, globptrs = build_globmenu("layouts/*.lay", nil, THEME_RESOURCE);
 	local globfmt = {};
-	
+
 	if (#globlbl > 0) then
 		local ptrsa = {};
 		local ptrsb = {};
@@ -163,25 +163,25 @@ function spawn_mainmenu()
 			ptrsa[val] = function(lbl, save) set_layout(val, "menu");   end
 			ptrsb[val] = function(lbl, save) set_layout(val, "ingame"); end
 		end
-	
+
 		table.insert(laylbls, "Menu Layout...");
 		table.insert(laylbls, "Ingame Layout...");
 
-		layptrs["Menu Layout..."]   = function() menu_spawnmenu(globlbl, ptrsa, {}); end 
+		layptrs["Menu Layout..."]   = function() menu_spawnmenu(globlbl, ptrsa, {}); end
 		layptrs["Ingame Layout..."] = function() menu_spawnmenu(globlbl, ptrsb, {}); end
 	end
-	
+
 	add_submenu(settingslbls, settingsptrs, "Autoconnect...", "autoconnect", gen_tbl_menu("autoconnect", {"On", "Off"}, function(lbl)
 		store_key("autoconnect", lbl); end, true));
 
 	table.insert(mainlbls, "-------");
 	table.insert(mainlbls, "Connect");
 	mainptrs["Connect"] = open_connection;
-	
+
 	table.insert(mainlbls, "Shutdown");
 
 	mainptrs["Shutdown"] = function()
-		shutdown(); 
+		shutdown();
 	end
 
 	settingsptrs["Reset Keyconfig"] = function()
@@ -190,10 +190,10 @@ function spawn_mainmenu()
 		setup_keys(spawn_mainmenu);
 	end
 	settingsfmts["Reset Keyconfig"] = "\\b" .. settings.colourtable.alert_fontstr;
-	
+
 	connectptrs["Local Discovery"] = function()
 		settings.connect_host = "Local Discovery";
-		store_key("connect_host", settings.connect_host); 
+		store_key("connect_host", settings.connect_host);
 		settings.iodispatch["MENU_ESCAPE"]();
 		draw_infowin();
 	end
@@ -206,14 +206,14 @@ function spawn_mainmenu()
 -- do this here so we have access to the namespace where osdsavekbd exists
 		dispatch_push({}, "osd keyboard", function(iotbl)
 			complete, resstr = osdkbd_inputfun(iotbl, osdconnkbd);
-			
+
 			if (complete) then
 				osdconnkbd:destroy();
 				dispatch_pop();
-				
+
 				if (resstr) then
 					settings.connect_host = resstr;
-					store_key("connect_host", settings.connect_host); 
+					store_key("connect_host", settings.connect_host);
 					settings.iodispatch["MENU_ESCAPE"]();
 					draw_infowin();
 				end
@@ -241,7 +241,7 @@ function load_cb(restype, lay, laytbl)
 	if (restype == LAYRES_STATIC) then
 		if (lay.idtag == "background") then
 			return "backgrounds/" .. lay.res, (function(newvid) settings.background = newvid; end);
-			
+
 		elseif (lay.idtag == "image") then
 			return "images/" .. lay.res;
 		end
@@ -268,7 +268,7 @@ function activate_layout(laytgt, cur_item)
 	if (laytgt == nil or cur_item == nil) then
 		return;
 	end
-	
+
 	local restbl = resourcefinder_search(cur_item, true);
 	cur_item.restbl = restbl;
 
@@ -280,16 +280,16 @@ function activate_layout(laytgt, cur_item)
 
 -- need to create from scratch
 	if (settings.layout == nil) then
-		settings.lastlayout = "layouts/" .. laytgt;	
+		settings.lastlayout = "layouts/" .. laytgt;
 		settings.layout = layout_load(settings.lastlayout, function(restype, lay)
-			return load_cb(restype, lay, cur_item); 
+			return load_cb(restype, lay, cur_item);
 			end);
 	end
 
 -- :show takes care of updating what is necessary
 	if (settings.layout) then
 		settings.layout:show();
-		if (settings.layout["bgeffect"]) then 
+		if (settings.layout["bgeffect"]) then
 			update_shader(settings.layout["bgeffect"][1] and settings.layout["bgeffect"][1].res);
 		end
 	end
@@ -298,10 +298,10 @@ end
 function decode_message(msg)
 -- format matches broadcast_game in gridle.lua
 	nitem = string.split(msg, ":")
-	
+
 	if (nitem[1] == "playing" or nitem[1] == "selected") then
 		dstlay = nitem[1] == "playing" and settings.ingame_layout or settings.menu_layout;
-		
+
 		settings.cur_item = {};
 		settings.item_count = tonumber(nitem[2]);
 		last_key = nil;
@@ -313,7 +313,7 @@ function decode_message(msg)
 			settings.cur_item[last_key] = msg;
 			last_key = nil;
 			settings.item_count = settings.item_count - 1;
-	
+
 			if (settings.item_count <= 0) then
 				settings.item_count = nil;
 				activate_layout(dstlay, settings.cur_item);
@@ -329,7 +329,7 @@ function net_event(source, tbl)
 			settings.warningwin:destroy();
 			settings.warningwin = nil;
 		end
-	
+
 		settings.connected = true;
 		dispatch_push(default_dispatch, "network input", gridleremote_netinput);
 
@@ -339,12 +339,12 @@ function net_event(source, tbl)
 	elseif (tbl.kind == "message") then
 		decode_message(tbl.message);
 
-	elseif (tbl.kind == "frameserver_terminated") then
+	elseif (tbl.kind == "terminated") then
 		reset_connection();
 	else
 		print(tbl.kind);
 	end
-	
+
 end
 
 function reset_connection()
@@ -356,7 +356,7 @@ function reset_connection()
 		settings.warningwin:destroy();
 		settings.warningwin = nil;
 	end
-	
+
 	if (settings.infowin) then
 		settings.infowin:destroy();
 		settings.infowin = nil;
@@ -366,10 +366,10 @@ function reset_connection()
 		settings.layout:destroy();
 		settings.layout = nil;
 	end
-	
+
 	settings.connection = nil;
 	settings.connected = false;
-	
+
 	spawn_mainmenu();
 	spawn_warning("Networking session terminated");
 end
@@ -403,13 +403,13 @@ function osdkbd_inputfun(iotbl, dstkbd)
 	if (resstr) then
 		return true, resstr;
 	end
-	
+
 	return false, nil
 end
 
 function setup_keys( trigger )
 -- rREMOTE_ESCAPE gets remapped to MENU_ESCAPE
-	local keylabels = { "", "rMENU_UP", "rMENU_DOWN", "rMENU_LEFT", "rMENU_RIGHT", "rMENU_SELECT", "rMENU_TOGGLE", 
+	local keylabels = { "", "rMENU_UP", "rMENU_DOWN", "rMENU_LEFT", "rMENU_RIGHT", "rMENU_SELECT", "rMENU_TOGGLE",
 		"rREMOTE_MENU", "rREMOTE_ESCAPE", "aMOUSE_X", "aMOUSE_Y", " CONTEXT", " FLAG_FAVORITE", " OSD_KEYBOARD", " QUICKSAVE", " QUICKLOAD"};
 
 -- prepare a keyconfig that support the specified set of labels (could be nil and get a default one)
@@ -438,7 +438,7 @@ function load_keys()
 	load_key_str("ingame_layout", "ingame_layout", settings.ingame_layout);
 	load_key_str("autoconnect",  "autoconnect",   settings.autoconnect);
 	load_key_str("connect_host",  "connect_host",  settings.connect_host);
-		
+
 	if #key_queue > 0 then
 		store_key(key_queue);
 	end
@@ -458,7 +458,7 @@ function gridleremote_netinput(iotbl)
 			elseif valid_vid(settings.connection) then
 				if (val == "REMOTE_MENU")   then val = "MENU_TOGGLE"; end
 				if (val == "REMOTE_ESCAPE") then val = "MENU_ESCAPE"; end
-				
+
 				if (iotbl.kind == "analog") then
 					net_push(settings.connection, "move:" .. val .. ":" .. tostring(iotbl.samples[1]));
 				else
@@ -478,7 +478,7 @@ function define_layout()
 -- do this here so we have access to the namespace where osdsavekbd exists
 	dispatch_push({}, "osdkbd (layout)", function(iotbl)
 		complete, resstr = osdkbd_inputfun(iotbl, osdsavekbd);
-	
+
 		if (complete) then
 			osdsavekbd:destroy();
 			osdsavekbd = nil;
@@ -501,7 +501,7 @@ function lay_setup(layname)
 		current_menu:destroy();
 		current_menu = current_menu.parent;
 	end
-	
+
 	if settings.infowin then
 		settings.infowin:destroy();
 		settings.infowin = nil;
@@ -520,7 +520,7 @@ function lay_setup(layname)
 		end
 		return vid;
 	end
-	
+
 	layout = layout_new(layname);
 	layout:add_resource("background", "Background...", function() return glob_resource("backgrounds/*.png"); end, nil, LAYRES_STATIC, true, function(key) return load_image("backgrounds/" .. key); end);
 	layout:add_resource("bgeffect", "Background Effect...", function() return glob_resource("shaders/bgeffects/*.fShader"); end, nil, LAYRES_SPECIAL, true, nil);
@@ -535,7 +535,7 @@ function lay_setup(layname)
 	for ind, val in ipairs( {"Title", "Genre", "Subgenre", "Setname", "Manufacturer", "Buttons", "Players", "Year", "Target", "System"} ) do
 		layout:add_resource(string.lower(val), val, val, "Dynamic Text...", LAYRES_TEXT, false, nil);
 	end
-	
+
 	layout.post_save_hook = hookfun;
 
 	layout.finalizer = function(state)
@@ -582,7 +582,7 @@ function update_shader(resname)
 	settings.shader = load_shader("shaders/fullscreen/default.vShader", "shaders/bgeffects/" .. resname, "bgeffect", {});
 	image_shader(settings.background, settings.shader);
 	shader_uniform(settings.shader, "display", "ff", PERSIST, VRESW, VRESH);
-	
+
 	if (valid_vid(settings.background)) then
 		image_shader(settings.background, settings.shader);
 	end
@@ -590,7 +590,7 @@ end
 
 function gridle_remote_dispatchinput(iotbl)
 	local restbl = keyconfig:match(iotbl);
-	
+
 	if (restbl) then
 		for ind,val in pairs(restbl) do
 			if (settings.iodispatch[val] and iotbl.active) then
@@ -598,5 +598,5 @@ function gridle_remote_dispatchinput(iotbl)
 			end
 		end
 	end
-	
+
 end
