@@ -1,6 +1,9 @@
 Gridle
 ======
 
+**Note that this project is no longer maintained. With the database and API changes done after Arcan 0.4, this will
+not work properly without changes to how launch targets are queried and used. **
+
 HTPC/Gaming Device script for Arcan (https://github.com/letoram/arcan)
 set the themepath ( arcan -t themepath ) to wherever you checked
 out this repository and to run.
